@@ -12,9 +12,29 @@ class Pongo:
 	def destroy ( self, widget, data=None ):
 		gtk.main_quit()
 
+	def database_picked ( self, treeview, path, view_column ):
+		i = self.databases_model.get_iter( path )
+		self.database_name = self.databases_model.get_value( i, 0 )
+		self.log( "Selected database: %s" % self.database_name )
+		self.load_collections()
+		self.window.set_title( "Pongo > %s:%d > %s" % ( self.host, self.port, self.database_name ) )
+
+	def load_collections ( self ):
+		self.collections_model.clear()
+		for collection in self.connection[self.database_name].collection_names():
+			i = self.collections_model.append()
+			self.collections_model.set( i, 0, collection )
+
+	def collection_picked ( self, treeview, path, view_column ):
+		i = self.collections_model.get_iter( path )
+		self.collection_name = self.collections_model.get_value( i, 0 )
+		self.log( "Selected collection: %s" % self.collection_name )
+		self.window.set_title( "Pongo > %s:%d > %s > %s" % ( self.host, self.port, self.database_name, self.collection_name ) )
+
 	def __init__ ( self ):
 		self.window = gtk.Window( gtk.WINDOW_TOPLEVEL )
 		self.window.connect( "destroy", self.destroy )
+		self.window.set_title( "Pongo" )
 
 		# Build all the panes we need
 		self.base_pane = gtk.VPaned()
@@ -53,6 +73,7 @@ class Pongo:
 		scrolled_window.set_policy( gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC )
 		self.databases_model = gtk.ListStore( gobject.TYPE_STRING )
 		databases_view = gtk.TreeView( self.databases_model )
+		databases_view.connect( "row-activated", self.database_picked )
 		scrolled_window.add_with_viewport( databases_view )
 		cell = gtk.CellRendererText()
 		column = gtk.TreeViewColumn( "Databases", cell, text=0 )
@@ -64,6 +85,7 @@ class Pongo:
 		scrolled_window.set_policy( gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC )
 		self.collections_model = gtk.ListStore( gobject.TYPE_STRING )
 		collections_view = gtk.TreeView( self.collections_model )
+		collections_view.connect( "row-activated", self.collection_picked )
 		scrolled_window.add_with_viewport( collections_view )
 		cell = gtk.CellRendererText()
 		column = gtk.TreeViewColumn( "Collections", cell, text=0 )
@@ -74,14 +96,19 @@ class Pongo:
 		self.window.add( self.base_pane )
 		self.window.show_all()
 
-		self.connect()
+		self.mongo_connect()
 
 	def log ( self, message ):
 		i = self.log_model.prepend()
 		self.log_model.set( i, 0, datetime.datetime.now().strftime( '%T' ) )
 		self.log_model.set( i, 1, message )
 
-	def connect ( self, host="localhost", port=27017 ):
+	def mongo_connect ( self, host="localhost", port=27017 ):
+
+		self.host = host
+		self.port = port
+		self.window.set_title( "Pongo > %s:%d" % ( self.host, self.port ) )
+
 		self.log( "Connecting to %s:%d" % ( host, port ) )
 		self.connection = pymongo.Connection()
 		self.log( "Reading database list." )
