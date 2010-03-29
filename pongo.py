@@ -12,6 +12,40 @@ class Pongo:
 	def destroy ( self, widget, data=None ):
 		gtk.main_quit()
 
+	def show_connection_dialog ( self ):
+		dialog = gtk.Dialog(
+			"Pongo - Connect",
+			None,
+			gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
+			(
+				"Connect", gtk.RESPONSE_ACCEPT,
+				"Cancel", gtk.RESPONSE_CLOSE
+			)
+		)
+		label = gtk.Label( "<b>Host</b>" )
+		label.set_alignment( 0, 0 )
+		label.set_use_markup( True )
+		label.show()
+		dialog.vbox.pack_start( label )
+		host = gtk.Entry()
+		host.set_text( "localhost" )
+		host.show()
+		dialog.vbox.pack_start( host )
+		label = gtk.Label( "<b>Port</b>" )
+		label.set_alignment( 0, 0 )
+		label.set_use_markup( True )
+		label.show()
+		dialog.vbox.pack_start( label )
+		port = gtk.Entry()
+		port.set_text( "27017" )
+		port.show()
+		dialog.vbox.pack_start( port )
+		response = dialog.run()
+		dialog.hide()
+		
+		if response == gtk.RESPONSE_ACCEPT:
+			self.mongo_connect( host.get_text(), int( port.get_text() ) )
+
 	def database_picked ( self, treeview, path, view_column ):
 		i = self.databases_model.get_iter( path )
 		self.database_name = self.databases_model.get_value( i, 0 )
@@ -96,7 +130,7 @@ class Pongo:
 		self.window.add( self.base_pane )
 		self.window.show_all()
 
-		self.mongo_connect()
+		self.show_connection_dialog()
 
 	def log ( self, message ):
 		i = self.log_model.prepend()
