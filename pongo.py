@@ -7,6 +7,52 @@ import gtk, gobject
 import pymongo
 import datetime
 
+class PongoObject ( gtk.Frame ):
+	
+	def __init__ ( self ):
+		gtk.Frame.__init__( self )
+		self.store = gtk.TreeStore( str, str )
+		
+		tree_view = gtk.TreeView( self.store )
+		
+		cell = gtk.CellRendererText()
+		column = gtk.TreeViewColumn( "Key", cell, text=0 )
+		tree_view.append_column( column )
+		
+		cell = gtk.CellRendererText()
+		column = gtk.TreeViewColumn( "Value", cell, text=1 )
+		tree_view.append_column( column )
+		
+		tree_view.set_enable_tree_lines( True )
+		#tree_view.set_headers_visible( False )
+		
+		self.add( tree_view )
+		
+		self.base = self.store.append( None, [ '[Object]', '' ] )
+	
+	def load ( self, obj ):
+		self.load_dict( obj, self.base )
+
+	def load_dict ( self, data, iterator ):
+		for key,value in data.items():
+			self.process_item( key, value, iterator )
+
+	def load_tuple ( self, data, iterator ):
+		i = 0
+		for item in data:
+			self.process_item( '[%d]' % i, item, iterator )
+			i = i + 1
+
+	def process_item ( self, key, value, iterator ):
+		if dict == type( value ):
+			new_iterator = self.store.append( iterator, [ key, '[Object]' ] )
+			self.load_dict( value, new_iterator )
+		elif tuple == type( value ) or list == type( value ):
+			new_iterator = self.store.append( iterator, [ key, '[Array]' ] )
+			self.load_tuple( value, new_iterator )
+		else:
+			self.store.append( iterator, [ key, value ] )
+
 class Pongo:
 
 	# Establish variables
