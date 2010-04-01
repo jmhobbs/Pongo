@@ -129,6 +129,8 @@ class Pongo:
 		self.build_title()
 
 	def __init__ ( self ):
+		gtk.window_set_default_icon_from_file( 'images/icon_16s.png' )
+
 		self.window = gtk.Window( gtk.WINDOW_TOPLEVEL )
 		self.window.connect( "destroy", lambda w: gtk.main_quit() )
 		self.window.set_title( "Pongo" )
