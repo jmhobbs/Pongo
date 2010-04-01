@@ -114,7 +114,6 @@ class Pongo:
 	def database_picked ( self, treeview, path, view_column ):
 		i = self.databases_model.get_iter( path )
 		self.database = self.databases_model.get_value( i, 0 )
-		self.log( "Selected database: %s" % self.database )
 		self.load_collections()
 		self.build_title()
 
@@ -127,7 +126,6 @@ class Pongo:
 	def collection_picked ( self, treeview, path, view_column ):
 		i = self.collections_model.get_iter( path )
 		self.collection = self.collections_model.get_value( i, 0 )
-		self.log( "Selected collection: %s.%s" % ( self.database, self.collection ) )
 		self.build_title()
 
 	def __init__ ( self ):
@@ -136,54 +134,55 @@ class Pongo:
 		self.window.set_title( "Pongo" )
 		self.window.set_size_request( 700, 500 )
 
-		# Build all the panes we need
-		base_pane = gtk.VPaned()
-		top_pane = gtk.HPaned()
-		left_pane = gtk.VPaned()
+		# Build the layout
+		base = gtk.VBox()
+		h_pane = gtk.HPaned()
 		right_pane = gtk.VPaned()
-		
-		# Now the complete container
-		contain_all = gtk.VBox( False, 0 )
-		self.window.add( contain_all )
-		contain_all.pack_end( base_pane, True, True, 2 )
+		h_pane.pack2( right_pane )
+		self.window.add( base )
 
 		# Build the menu
 		self.menu_connect = gtk.MenuItem( "Connect" )
 		self.menu_refresh = gtk.MenuItem( "Refresh" )
 		self.menu_bar = gtk.MenuBar()
-		contain_all.pack_start( self.menu_bar, False, False, 2 )
+		base.pack_start( self.menu_bar, False, False, 5 )
 		self.menu_bar.append( self.menu_connect )
 		self.menu_bar.append( self.menu_refresh )
 		self.menu_connect.connect( "activate", self.show_connection_dialog )
 
-		# Get the panes in place
-		top_pane.add( left_pane )
-		top_pane.add( right_pane )
-		base_pane.add( top_pane )
+		self.results_window = gtk.ScrolledWindow()
+		self.results_window.set_policy( gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC )
+		self.results_window.set_size_request( 500, 100 )
+		h_pane.pack1( self.results_window )
 
-		# Build the Logs Pane
-		scrolled_window = gtk.ScrolledWindow()
-		scrolled_window.set_policy( gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC )
-		self.log_model = gtk.ListStore( gobject.TYPE_STRING, gobject.TYPE_STRING )
-		log_view = gtk.TreeView( self.log_model )
-		scrolled_window.add_with_viewport( log_view )
-		cell = gtk.CellRendererText()
-		column = gtk.TreeViewColumn( "Log", cell, text=0 )
-		log_view.append_column( column )
-		column = gtk.TreeViewColumn( "", cell, text=1 )
-		log_view.append_column( column )
-		base_pane.add( scrolled_window )
+		# Build the status bar
+		self.status = gtk.Statusbar()
+		base.pack_end( self.status, False, False, 0 )
+		self.status.push( self.status.get_context_id( 'welcome' ), 'Welcome to Pongo' )
 
-		# Build the Query Pane
+		# Now add the main pane
+		base.pack_end( h_pane, True, True, 0 )
+
+		# Build the Query box
+		hbox = gtk.HBox()
+		
 		scrolled_window = gtk.ScrolledWindow()
 		scrolled_window.set_policy( gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC )
 		self.query = gtk.TextView()
 		scrolled_window.add( self.query )
-		left_pane.add( scrolled_window )
+		frame = gtk.Frame()
+		frame.add( scrolled_window )
+		frame.set_size_request( 100, 100 )
+		self.run_button = gtk.Button( "Run" )
+		self.run_button.set_size_request( 100, 100 )
+		hbox.pack_end( self.run_button, False, False, 5 )
+		hbox.pack_start( frame, True, True, 5 )
+		base.pack_start( hbox, False, False, 5 )
 
 		# Build the Databases Pane
 		scrolled_window = gtk.ScrolledWindow()
 		scrolled_window.set_policy( gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC )
+		scrolled_window.set_size_request( 100, 150 )
 		self.databases_model = gtk.ListStore( gobject.TYPE_STRING )
 		databases_view = gtk.TreeView( self.databases_model )
 		databases_view.connect( "row-activated", self.database_picked )
@@ -210,11 +209,6 @@ class Pongo:
 
 		self.show_connection_dialog()
 
-	def log ( self, message ):
-		i = self.log_model.prepend()
-		self.log_model.set( i, 0, datetime.datetime.now().strftime( '%T' ) )
-		self.log_model.set( i, 1, message )
-
 	def mongo_connect ( self, host="localhost", port=27017 ):
 
 		self.mongo_disconnect()
@@ -222,15 +216,15 @@ class Pongo:
 		self.host = host
 		self.port = port
 
-		self.log( "Connecting to %s:%d" % ( host, port ) )
 		try:
 			self.mongo = pymongo.Connection( host, port )
 			for database in self.mongo.database_names():
 				i = self.databases_model.append()
 				self.databases_model.set( i, 0, database )
 			self.build_title()
+			self.set_status( "Connected to %s:%d" % ( self.host, self.port ) )
 		except:
-			self.log( "Connection failed!" )
+			self.set_status( "Connection failed to %s:%d" % ( self.host, self.port ) )
 			self.mongo_disconnect()
 
 	def mongo_disconnect ( self ):
@@ -242,6 +236,11 @@ class Pongo:
 		self.collections_model.clear()
 		
 		self.build_title()
+
+	def set_status ( self, message ):
+		context = self.status.get_context_id( 'welcome' )
+		self.status.pop( context )
+		self.status.push( context, message )
 
 	def main( self ):
 		gtk.main()
