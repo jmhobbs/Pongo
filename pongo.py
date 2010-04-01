@@ -150,10 +150,13 @@ class Pongo:
 		self.menu_bar.append( self.menu_refresh )
 		self.menu_connect.connect( "activate", self.show_connection_dialog )
 
-		self.results_window = gtk.ScrolledWindow()
-		self.results_window.set_policy( gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC )
-		self.results_window.set_size_request( 500, 100 )
-		h_pane.pack1( self.results_window )
+		# Build the results window
+		self.results_window = gtk.VBox()
+		scrolled_window = gtk.ScrolledWindow()
+		scrolled_window.set_policy( gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC )
+		scrolled_window.set_size_request( 500, 100 )
+		scrolled_window.add_with_viewport( self.results_window )
+		h_pane.pack1( scrolled_window )
 
 		# Build the status bar
 		self.status = gtk.Statusbar()
@@ -165,7 +168,6 @@ class Pongo:
 
 		# Build the Query box
 		hbox = gtk.HBox()
-		
 		scrolled_window = gtk.ScrolledWindow()
 		scrolled_window.set_policy( gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC )
 		self.query = gtk.TextView()
@@ -208,6 +210,12 @@ class Pongo:
 		self.window.show_all()
 
 		self.show_connection_dialog()
+
+	def add_result ( self, data ):
+		obj = PongoObject()
+		obj.load( data )
+		obj.show_all()
+		self.results_window.pack_start( obj, True, True, 5 )
 
 	def mongo_connect ( self, host="localhost", port=27017 ):
 
