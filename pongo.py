@@ -8,28 +8,28 @@ import pymongo
 import datetime
 
 class PongoObject ( gtk.Frame ):
-	
+
 	def __init__ ( self ):
 		gtk.Frame.__init__( self )
 		self.store = gtk.TreeStore( str, str )
-		
+
 		tree_view = gtk.TreeView( self.store )
-		
+
 		cell = gtk.CellRendererText()
 		column = gtk.TreeViewColumn( "Key", cell, text=0 )
 		tree_view.append_column( column )
-		
+
 		cell = gtk.CellRendererText()
 		column = gtk.TreeViewColumn( "Value", cell, text=1 )
 		tree_view.append_column( column )
-		
+
 		tree_view.set_enable_tree_lines( True )
 		#tree_view.set_headers_visible( False )
-		
+
 		self.add( tree_view )
-		
+
 		self.base = self.store.append( None, [ '[Object]', '' ] )
-	
+
 	def load ( self, obj ):
 		self.load_dict( obj, self.base )
 
@@ -82,32 +82,32 @@ class Pongo:
 				"Cancel", gtk.RESPONSE_CLOSE
 			)
 		)
-		
+
 		label = gtk.Label( "<b>Host</b>" )
 		label.set_alignment( 0, 0 )
 		label.set_use_markup( True )
 		label.show()
 		dialog.vbox.pack_start( label )
-		
+
 		host = gtk.Entry()
 		host.set_text( self.host )
 		host.show()
 		dialog.vbox.pack_start( host )
-		
+
 		label = gtk.Label( "<b>Port</b>" )
 		label.set_alignment( 0, 0 )
 		label.set_use_markup( True )
 		label.show()
 		dialog.vbox.pack_start( label )
-		
+
 		port = gtk.Entry()
 		port.set_text( str( self.port ) )
 		port.show()
 		dialog.vbox.pack_start( port )
-		
+
 		response = dialog.run()
 		dialog.hide()
-		
+
 		if response == gtk.RESPONSE_ACCEPT:
 			self.mongo_connect( host.get_text(), int( port.get_text() ) )
 
@@ -142,13 +142,31 @@ class Pongo:
 		self.window.add( base )
 
 		# Build the menu
+		menu = gtk.Menu()
+
+		file_menu = gtk.MenuItem( "File" )
+		file_menu.set_submenu( menu )
+
 		self.menu_connect = gtk.MenuItem( "Connect" )
-		self.menu_refresh = gtk.MenuItem( "Refresh" )
-		self.menu_bar = gtk.MenuBar()
-		base.pack_start( self.menu_bar, False, False, 5 )
-		self.menu_bar.append( self.menu_connect )
-		self.menu_bar.append( self.menu_refresh )
 		self.menu_connect.connect( "activate", self.show_connection_dialog )
+
+		self.menu_disconnect = gtk.MenuItem( "Disconnect" )
+		self.menu_disconnect.connect( "activate", self.mongo_disconnect )
+
+		self.menu_refresh = gtk.MenuItem( "Refresh" )
+		# TODO Connect this?
+
+		self.menu_exit = gtk.MenuItem( "Exit" )
+		self.menu_exit.connect( "activate", lambda w: gtk.main_quit() )
+
+		menu.append( self.menu_connect )
+		menu.append( self.menu_disconnect )
+		menu.append( self.menu_refresh )
+		menu.append( self.menu_exit )
+
+		self.menu_bar = gtk.MenuBar()
+		self.menu_bar.append( file_menu )
+		base.pack_start( self.menu_bar, False, False, 5 )
 
 		# Build the results window
 		self.results_window = gtk.VBox()
@@ -232,17 +250,18 @@ class Pongo:
 			self.build_title()
 			self.set_status( "Connected to %s:%d" % ( self.host, self.port ) )
 		except:
-			self.set_status( "Connection failed to %s:%d" % ( self.host, self.port ) )
 			self.mongo_disconnect()
+			self.set_status( "Connection failed to %s:%d" % ( self.host, self.port ) )
 
-	def mongo_disconnect ( self ):
+	def mongo_disconnect ( self, w=None ):
+		self.set_status( "Disconnected from %s:%d" % ( self.host, self.port ) )
 		self.mongo = None
 		self.database = None
 		self.collection = None
-		
+
 		self.databases_model.clear()
 		self.collections_model.clear()
-		
+
 		self.build_title()
 
 	def set_status ( self, message ):
