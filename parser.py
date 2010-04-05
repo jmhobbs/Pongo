@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import re
+
 class EmptyQueryException ( Exception ):
 	def __str__ ( self ):
 		return "The query was empty."
@@ -12,19 +14,37 @@ class UnknownCommandException ( Exception ):
 	def __str__ ( self ):
 		return "Unknown Command \"%s\" on line %d" % ( self.command, self.line )
 
+class SyntaxException ( Exception ):
+	def __init__ ( self, error, line ):
+		self.error = error
+		self.line = line
+
+	def __str__ ( self ):
+		return "%s (line %d)" % ( self.error, self.line )
+
+class ArgumentsException ( Exception ):
+	def __init__ ( self, command, arg_count, arg_min, arg_max, line ):
+		self.command = command
+		self.arg_count = arg_count
+		self.arg_min = arg_min
+		self.arg_max = arg_max
+		self.line = line
+
+	def __str__ ( self ):
+		return "Invalid number of arguments for %s on line %d. %d given, expects %d to %d." % ( self.command, self.line, self.arg_count, self.arg_min, self.arg_max )
 
 class PongoParser:
 	"""
 	This is a totally naive parser built by someone who has no idea how actual parsers work.
 	Please feel free to replace it :-)
 	"""
-
+	
 	functions = {
-		# token: ( NAME, min-params, max-params )
-		"find": ( "FIND", 0, 2 ),
-		"limit": ( "LIMIT", 1, 1 )
+		"find": { "name": "FIND", "operator": True, "arg-re": re.compile( r'^({.*})$' ), "min-args": 0, "max-args": 1 },
+		"limit": { "name": "LIMIT", "operator": False, "arg-re": re.compile( r'^([0-9]+)$' ), "min-args": 1, "max-args": 1 },
 	}
 
+	operator = None
 	stack = []
 
 	# Intermediary members
@@ -59,15 +79,31 @@ class PongoParser:
 			if command not in self.functions.keys():
 				raise UnknownCommandException( command, i + 1 ) # i + 1 translates list index to line number
 
-		# Get arguments
-		# Check arguments
-		# Add to stack
+			if ')' != line[-1]:
+				raise SyntaxException( "Missing close parenthesis.", i )
 
+			# Get arguments
+			arguments_raw = line.split( '(' )[1][:-1].strip()
+			res = self.functions[command]['arg-re'].match( arguments_raw )
+			
+			if None != res:
+				arguments = res.groups()
+			else:
+				arguments = ()
+			# Check arguments
+			if len( arguments ) < self.functions[command]['min-args'] or len( arguments ) > self.functions[command]['max-args']:
+				raise ArgumentsException( command, len( arguments ), self.functions[command]['min-args'], self.functions[command]['max-args'], i )
+
+			# Add to stack
+			print command, arguments
 
 if __name__ == "__main__":
 
 	query = """
 find()
+limit(10)
+
+find( { 'a': 'b' } )
 limit(10)
 """
 
