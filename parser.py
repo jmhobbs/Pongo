@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import re
+import json
 
 class EmptyQueryException ( Exception ):
 	def __str__ ( self ):
@@ -38,7 +39,7 @@ class PongoParser:
 	This is a totally naive parser built by someone who has no idea how actual parsers work.
 	Please feel free to replace it :-)
 	"""
-	
+
 	functions = {
 		"find": { "name": "FIND", "operator": True, "arg-re": re.compile( r'^({.*})$' ), "min-args": 0, "max-args": 1 },
 		"limit": { "name": "LIMIT", "operator": False, "arg-re": re.compile( r'^([0-9]+)$' ), "min-args": 1, "max-args": 1 },
@@ -85,17 +86,28 @@ class PongoParser:
 			# Get arguments
 			arguments_raw = line.split( '(' )[1][:-1].strip()
 			res = self.functions[command]['arg-re'].match( arguments_raw )
-			
+
 			if None != res:
 				arguments = res.groups()
 			else:
 				arguments = ()
+
+			# Go from strings to objects where needed
+			adjusted_arguments = []
+			for argument in arguments:
+				try:
+					adjusted_arguments.append( json.loads( argument ) )
+				except:
+					pass
+			arguments = tuple( adjusted_arguments )
+
 			# Check arguments
 			if len( arguments ) < self.functions[command]['min-args'] or len( arguments ) > self.functions[command]['max-args']:
 				raise ArgumentsException( command, len( arguments ), self.functions[command]['min-args'], self.functions[command]['max-args'], i )
 
 			# Add to stack
 			print command, arguments
+			self.stack.append( ( command, arguments ) )
 
 if __name__ == "__main__":
 
@@ -103,7 +115,7 @@ if __name__ == "__main__":
 find()
 limit(10)
 
-find( { 'a': 'b' } )
+find( { "a": "b" } )
 limit(10)
 """
 
@@ -118,5 +130,7 @@ limit(10)
 	p = PongoParser()
 	try:
 		p.parse( query )
+		print '-' * 20
+		print p.stack
 	except Exception, e:
 		print "ERROR:", e
