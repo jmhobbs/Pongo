@@ -254,6 +254,16 @@ class Pongo:
 		except:
 			self.mongo_disconnect()
 			self.set_status( "Connection failed to %s:%d" % ( self.host, self.port ) )
+			error_dialog = gtk.MessageDialog(
+				None,
+				gtk.DIALOG_MODAL,
+				gtk.MESSAGE_ERROR,
+				gtk.BUTTONS_OK,
+				"Connection failed to %s:%d" % ( self.host, self.port )
+			)
+			error_dialog.set_title( "Error Connecting" )
+			error_dialog.run()
+			error_dialog.destroy()
 
 	def mongo_disconnect ( self, w=None ):
 		self.set_status( "Disconnected from %s:%d" % ( self.host, self.port ) )
